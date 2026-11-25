@@ -112,24 +112,15 @@ def stop(process):
     def send(sig):
         try:
             os.killpg(process.pid, sig)
-        except ProcessLookupError:
+        except (ProcessLookupError, PermissionError):
             pass
 
+    # Keep the leader unreaped until the group signal is sent so its process
+    # group ID cannot be recycled. Children that ignore SIGTERM need the
+    # follow-up SIGKILL, which also reaches descendants that stay in the group.
     send(signal.SIGTERM)
-    if hasattr(os, "waitid"):
-        # Keep the leader unreaped so its process-group ID cannot be recycled.
-        time.sleep(1)
-        try:
-            send(signal.SIGKILL)
-        except PermissionError:
-            exited = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT | os.WNOHANG)
-            if exited is None:
-                raise
-    else:
-        try:
-            return process.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            send(signal.SIGKILL)
+    time.sleep(1)
+    send(signal.SIGKILL)
     return process.wait()
 
 
