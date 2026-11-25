@@ -4,6 +4,7 @@ import tomllib
 import uuid
 
 from storage import ROOT, RUNTIME, now, read, write
+from sqlite_state import DB, initialize, lifecycle, owner, set_lifecycle, set_owner, transaction
 
 CONTROL = RUNTIME / "control.json"
 OWNER = RUNTIME / "developer.json"
@@ -32,16 +33,42 @@ def permit(section, operation, approved=False, settings=None):
 
 
 def control():
+    if DB.exists():
+        initialize(DB)
+        with transaction(DB) as connection:
+            state = lifecycle(connection)
+        if state:
+            return state
     return read(CONTROL) if CONTROL.exists() else {"mode": "running", "generation": "initial"}
 
 
 def owner():
+    if DB.exists():
+        initialize(DB)
+        with transaction(DB) as connection:
+            return owner(connection)
     return read(OWNER)["id"] if OWNER.exists() else None
+
+
+def set_owner_id(owner_id, reason):
+    if DB.exists():
+        initialize(DB)
+        with transaction(DB) as connection:
+            set_owner(connection, owner_id, reason)
+    if owner_id is None:
+        if OWNER.exists():
+            OWNER.unlink()
+    else:
+        write(OWNER, {"id": owner_id})
 
 
 def new_generation(mode, reason, **details):
     value = {"mode": mode, "generation": uuid.uuid4().hex, "reason": reason,
              "updated_at": now(), **details}
+    if DB.exists():
+        initialize(DB)
+        with transaction(DB) as connection:
+            set_lifecycle(connection, value, reason)
     write(CONTROL, value)
     return value
 

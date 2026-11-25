@@ -10,3 +10,5 @@ Commit verified changes in focused units with English Conventional Commits.
 Stage only relevant files. Push, publish, or open pull requests only with
 explicit authorization. Keep human documentation in English and Japanese,
 and agent-only instructions in English.
+
+Reliability implementation follows `docs/en/reliability-plan.md`.

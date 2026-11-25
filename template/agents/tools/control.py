@@ -5,7 +5,7 @@ import json
 import re
 import sys
 
-from policy import LOCK, OWNER, control, new_generation, owner, permit, require_running, wake_scope
+from policy import LOCK, OWNER, control, new_generation, owner, permit, require_running, wake_scope, set_owner_id
 from storage import RUNTIME, git, lock, read, write
 
 TERMINAL = {"succeeded", "failed", "timed_out", "cancelled", "interrupted"}
@@ -72,7 +72,7 @@ def change(action, reason, *, developer=None, previous=None):
             raise ValueError("Verify the old Developer has ended, then specify --previous-owner")
         recovery = recovery_context()
         if developer:
-            write(OWNER, {"id": developer})
+            set_owner_id(developer, "Explicit Developer resume")
         return new_generation("running", reason, recovery=recovery, previous_shutdown={
             key: state[key] for key in ("reason", "shutdown", "jobs", "handover") if key in state})
     if action == "graceful":

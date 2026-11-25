@@ -9,7 +9,7 @@ import uuid
 from control import recovery_context, settle
 from github_tracker import GitHubTracker
 from issue_classification import KINDS, PRIORITIES, STATES as GITHUB_STATES
-from policy import LOCK, config, control, new_generation, require_running
+from policy import LOCK, config, control, new_generation, require_running, set_owner_id
 from storage import RESEARCH, RUNTIME, git, lock, now, read, write
 
 STATES = ("ready", "active", "waiting", "blocked", "done")
@@ -57,7 +57,7 @@ def ownership(args, owner):
     if args.action == "claim":
         if owner and args.owner != owner:
             raise ValueError(f"Developer ownership held by {owner}")
-        write(OWNER, {"id": args.owner})
+        set_owner_id(args.owner, "Developer claim")
         return True
     if args.action == "handoff":
         if owner != args.previous:
@@ -66,7 +66,7 @@ def ownership(args, owner):
         if current["mode"] == "stopping":
             raise ValueError("Finalize shutdown or explicitly resume with the new owner")
         new_generation(current["mode"], "Developer handoff")
-        write(OWNER, {"id": args.owner})
+        set_owner_id(args.owner, "Developer handoff")
         return True
     if owner != args.owner:
         raise ValueError("Developer ownership required")
@@ -75,7 +75,7 @@ def ownership(args, owner):
             raise ValueError("Keep the Developer owner until graceful handover is finalized")
         if control()["mode"] == "running":
             new_generation("running", "Developer released ownership")
-        OWNER.unlink()
+        set_owner_id(None, "Developer release")
         return True
     return False
 

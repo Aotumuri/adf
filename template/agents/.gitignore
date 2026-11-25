@@ -1,2 +1,6 @@
 /runtime/
 /tools/**/__pycache__/
+/runtime/adf.sqlite3
+/runtime/adf.sqlite3-*
+/runtime/adf.sqlite3
+/runtime/adf.sqlite3-*
