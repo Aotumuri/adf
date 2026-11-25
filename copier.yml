@@ -1,4 +1,4 @@
-_min_copier_version: "9.7.0"
+_min_copier_version: "9.19.1"
 _subdirectory: template
 _exclude:
   - "**/__pycache__"
