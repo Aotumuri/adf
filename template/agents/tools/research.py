@@ -137,6 +137,8 @@ def github_command(args, settings):
     if operation == "show":
         processed = saved.get("processed", []) if saved.get("issue") == args.number else []
         return tracker.detail(args.number, processed)
+    if operation == "label-plan":
+        return tracker.label_plan()
     if operation == "setup-labels":
         return tracker.setup_labels(args.approved)
     if settings["tracker"]["backend"] != "github":
@@ -195,6 +197,7 @@ def github_parser(commands):
     actions.add_parser("list")
     actions.add_parser("candidates")
     actions.add_parser("setup-labels")
+    actions.add_parser("label-plan")
     for name in ("show", "checkpoint", "comment", "progress", "link", "checklist", "classify"):
         actions.add_parser(name).add_argument("number", type=number)
     create = actions.add_parser("create")

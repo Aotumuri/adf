@@ -170,6 +170,11 @@ class GitHubTrackerTest(unittest.TestCase):
     def test_setup_labels_only_creates_missing_definitions(self):
         self.remote.labels["bug"] = {"name": "bug", "color": "d73a4a", "description": "Bug"}
         self.remote.labels["status:proposed"] = {"name": "status:proposed", "color": "000000"}
+        plan = self.tracker.label_plan()
+        self.assertEqual(plan["conflicts"][0]["expected"]["name"], "status:proposed")
+        self.assertEqual(len(plan["missing"]), len(DEFINITIONS) - 1)
+        self.assertFalse(plan["matching"])
+        self.assertEqual(self.remote.writes, 0)
         with self.assertRaisesRegex(ValueError, "explicit owner approval"):
             self.tracker.setup_labels(False)
         with self.assertRaisesRegex(ValueError, "definition differs"):
@@ -179,6 +184,8 @@ class GitHubTrackerTest(unittest.TestCase):
         definitions = self.tracker.setup_labels(True)
         self.assertEqual(len(definitions), len(DEFINITIONS))
         self.assertEqual(self.tracker.setup_labels(True), definitions)
+        self.assertEqual(self.tracker.label_plan(), {
+            "missing": [], "matching": definitions, "conflicts": []})
         self.assertEqual(self.remote.writes, len(DEFINITIONS))
         self.assertEqual(self.remote.labels["bug"]["color"], "d73a4a")
 

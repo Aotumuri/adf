@@ -136,16 +136,34 @@ class GitHubTracker:
                          lambda: next((i for i in self.issues() if split_body(i)[1].get("key") == key), None),
                          send)
 
+    @staticmethod
+    def compare_labels(labels):
+        existing = {label["name"].casefold(): label for label in labels}
+        plan = {"missing": [], "matching": [], "conflicts": []}
+        for definition in DEFINITIONS:
+            label = existing.get(definition["name"])
+            if label is None:
+                plan["missing"].append(definition)
+            elif any(label.get(field) != value for field, value in definition.items()):
+                plan["conflicts"].append({"expected": definition, "existing": label})
+            else:
+                plan["matching"].append(label)
+        return plan
+
+    def label_plan(self):
+        return self.compare_labels(self.labels())
+
     def setup_labels(self, approved):
         permit("tracker.github", "create_label", approved, self.settings)
         with lock(RUNTIME / "github.lock"):
-            existing = {label["name"].casefold(): label for label in self.labels()}
-            for definition in DEFINITIONS:
-                label = existing.get(definition["name"])
-                if label and any(label.get(field) != value for field, value in definition.items()):
-                    raise ValueError(f"Existing GitHub label definition differs: {definition['name']}")
-            return [existing[definition["name"]] if definition["name"] in existing
-                    else self.api("POST", "labels", definition) for definition in DEFINITIONS]
+            plan = self.label_plan()
+            if plan["conflicts"]:
+                name = plan["conflicts"][0]["expected"]["name"]
+                raise ValueError(f"Existing GitHub label definition differs: {name}")
+            labels = {label["name"]: label for label in plan["matching"]}
+            labels.update((label["name"], self.api("POST", "labels", label))
+                          for label in plan["missing"])
+            return [labels[definition["name"]] for definition in DEFINITIONS]
 
     def labels(self):
         return self.api("GET", "labels?per_page=100", paginate=True)
