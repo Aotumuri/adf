@@ -24,6 +24,20 @@ URL is outside the verified scope.
 [Copier update behavior](https://copier.readthedocs.io/en/stable/updating/) ·
 [Codex Skill discovery](https://learn.chatgpt.com/docs/build-skills)
 
+## Core reliability update
+
+The core reliability work added SQLite runtime state, an opt-in legacy JSON
+migration with a pre-migration backup, transactional lifecycle and owner updates,
+runtime job concurrency limits, an agent-runtime adapter boundary, and explicit
+GitHub status-transition validation. Focused tests pass locally. Live GitHub,
+Codex Queue, Worker and same-thread resume behavior remain unverified and are not
+enabled by CI.
+
+SQLite state is stored under `agents/runtime/adf.sqlite3`, excluded from Git and
+Copier-managed state. The migration remains opt-in and preserves legacy JSON;
+SQLite is used only after migration initialization. Live external operations
+require separate authorization.
+
 ## Remaining roadmap
 
 1. Run both primary roles and repeat the initializer in an approved disposable

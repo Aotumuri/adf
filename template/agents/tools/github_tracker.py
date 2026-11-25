@@ -6,6 +6,7 @@ import re
 import subprocess
 
 from issue_classification import DEFINITIONS, STATES, classification, label_names, replace_classification
+from issue_classification import validate_transition
 from issue_checklist import check_tasks
 from policy import config, permit
 from storage import ROOT, RUNTIME, lock, read, write
@@ -222,6 +223,7 @@ class GitHubTracker:
 
     def _progress(self, number, status, approved, published, tasks):
         issue = self.issue(number)
+        validate_transition(issue, status)
         text, _ = split_body(issue)
         if issue["state"] == "closed":
             if status == "completed" and issue.get("state_reason") == "completed" and check_tasks(text, tasks) == text:

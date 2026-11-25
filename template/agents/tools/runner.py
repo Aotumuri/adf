@@ -16,6 +16,7 @@ from pathlib import Path
 from control import finish_if_no_wake, saved_jobs, settle, TERMINAL
 from policy import CONTROL, LOCK, auto_resume, config, control, owner, require_running, wake_scope
 from storage import ROOT, RUNTIME, git, lock, now, read, write
+from runtime_adapter import RuntimeAdapter
 
 JOBS = RUNTIME / "jobs"
 
@@ -37,6 +38,13 @@ def start(args):
     require_running()
     if not args.command:
         raise ValueError("Specify an explicit experiment command after --")
+    maximum = config().get("execution", {}).get("max_active_workers", 1)
+    if not isinstance(maximum, int) or maximum < 1:
+        raise ValueError("execution.max_active_workers must be a positive integer")
+    active = sum(1 for path in JOBS.glob("*/manifest.json")
+                 if read(path)["status"] not in TERMINAL)
+    if active >= maximum:
+        raise ValueError("Maximum active experiment workers reached")
     revision = git("rev-parse", "--verify", "--end-of-options", args.revision + "^{commit}")
     dependencies = ROOT / "node_modules" if args.reuse_node_modules else None
     if dependencies and (not dependencies.is_dir() or
@@ -156,46 +164,19 @@ def finish(job, manifest, status, *, exit_code=None, **details):
 
 
 def cli_candidates():
-    override = os.environ.get("CODEX_CLI_PATH")
-    configured = config().get("execution", {}).get("codex_cli_path")
-    candidates = (override,) if override else (
-        configured, "codex", os.environ.get("CODEX_APP_RUNTIME_CLI_PATH"))
-    paths = {}
-    for candidate in filter(None, candidates):
-        executable = shutil.which(os.path.expanduser(candidate))
-        if executable:
-            paths[os.path.abspath(executable)] = None
-    return list(paths)
+    return RuntimeAdapter(settings=config()).cli_candidates()
 
 
 def probe(command):
-    try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=5)
-        return result.stdout if result.returncode == 0 else ""
-    except (OSError, subprocess.TimeoutExpired):
-        return ""
+    return RuntimeAdapter().probe(command)
 
 
 def supports_queue(cli):
-    help_text = probe([cli, "help", "queue"])
-    return "Queue a message for an existing session" in help_text and all(
-        flag in help_text for flag in ("--thread", "--message", "--resume"))
+    return RuntimeAdapter().supports_queue(cli)
 
 
 def capabilities():
-    cli = [{"path": path, "version": probe([path, "--version"]).strip(),
-            "queue": supports_queue(path),
-            "resume": "SESSION_ID" in probe([path, "exec", "resume", "--help"]),
-            "app_server": "--listen" in probe([path, "app-server", "--help"])}
-           for path in cli_candidates()]
-    return {
-        "codex": cli,
-        "notification_cli": next((entry["path"] for entry in cli if entry["queue"]), None),
-        "thread_hint_present": bool(os.environ.get("CODEX_THREAD_ID")),
-        "desktop_runtime_present": bool(os.environ.get("CODEX_APP_RUNTIME_CLI_PATH")),
-        "tmux": bool(shutil.which("tmux")),
-        "background_method": "POSIX detached supervisor; host lifetime must be tested",
-    }
+    return RuntimeAdapter(settings=config()).capabilities()
 
 
 def notify(job, manifest):

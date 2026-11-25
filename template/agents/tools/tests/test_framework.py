@@ -25,7 +25,8 @@ class FrameworkTest(unittest.TestCase):
             shutil.copy(path, self.tools / path.name)
         settings = (TOOLS.parent / "config.example.toml").read_text()
         (self.tools.parent / "config.toml").write_text(
-            settings.replace('backend = "github"', 'backend = "local"'))
+            settings.replace('backend = "github"', 'backend = "local"')
+            .replace("max_active_workers = 1", "max_active_workers = 4"))
         self.save(self.research / "state.json", {"version": 1, "tasks": {}, "reviews": {}})
         self.git("init", "-q")
         (self.root / "source.txt").write_text("committed")
@@ -108,6 +109,18 @@ class FrameworkTest(unittest.TestCase):
         self.assertEqual((result["status"], result["revision"]), ("succeeded", self.revision))
         self.assertEqual((self.manifest("long").parent / result["log"]).read_text().strip(), "committed")
         self.assertEqual((self.root / "source.txt").read_text(), "unrelated local edit")
+
+    def test_max_active_workers_is_enforced(self):
+        settings = self.tools.parent / "config.toml"
+        settings.write_text(settings.read_text().replace("max_active_workers = 4",
+                                                         "max_active_workers = 1"))
+        self.start("active", "import time; time.sleep(20)")
+        self.wait_for("active", lambda state: state["status"] == "running")
+        denied = self.start("denied", "pass", check=False)
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn("Maximum active experiment workers reached", denied.stderr)
+        self.call("runner", "cancel", "active")
+        self.done("active")
 
     def test_cancel_timeout_and_recover(self):
         self.start("cancel", "import time; time.sleep(30)")

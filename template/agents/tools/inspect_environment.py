@@ -12,7 +12,7 @@ sys.dont_write_bytecode = True
 
 from github_tracker import GitHubTracker
 from policy import CONTROL, OWNER, config, control, owner
-from runner import capabilities
+from runtime_adapter import RuntimeAdapter
 from storage import ROOT, RUNTIME
 
 
@@ -50,6 +50,7 @@ def github_evidence(repository, settings):
 
 def evidence(repository):
     settings = config()
+    codex = RuntimeAdapter(settings=settings).capabilities()
     git_dir = command("git", "rev-parse", "--absolute-git-dir")
     existing = ["AGENTS.md", ".agents/skills", ".codex/config.toml", ".codex/agents",
                 ".github/ISSUE_TEMPLATE", ".github/workflows", "agents/config.toml",
@@ -59,7 +60,7 @@ def evidence(repository):
         "os": platform.platform(),
         "python": platform.python_version(),
         "tools": {name: bool(shutil.which(name)) for name in ("git", "gh", "copier", "codex")},
-        "codex": capabilities(),
+        "codex": codex,
         "files_present": [name for name in existing if (ROOT / name).exists()],
         "access_hints": {"root_readable": os.access(ROOT, os.R_OK),
                          "root_writable": os.access(ROOT, os.W_OK),

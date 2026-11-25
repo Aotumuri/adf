@@ -23,6 +23,17 @@
 [Copier の更新仕様](https://copier.readthedocs.io/en/stable/updating/) ·
 [Codex の Skill 検出](https://learn.chatgpt.com/docs/build-skills)
 
+## コア堅牢性の更新
+
+コアの堅牢性では、SQLiteランタイム状態、移行前バックアップ付きの任意JSON移行、
+ライフサイクルと所有者のトランザクション更新、実験ジョブの同時実行上限、
+エージェントRuntime境界、GitHub状態遷移の検証を追加しました。焦点テストは
+ローカルで成功しています。GitHub、Codex Queue、Worker、同一スレッド再開は
+実環境で未検証であり、CIでは有効化しません。
+
+SQLiteは `agents/runtime/adf.sqlite3` に保存し、GitとCopierの配布対象から除外します。
+移行は明示的で再実行可能であり、旧JSONを残します。実外部操作には別途承認が必要です。
+
 ## 残りのロードマップ
 
 1. 許可された使い捨て Codex プロジェクトで両役割を実行し、Initializer を繰り返し実行する。

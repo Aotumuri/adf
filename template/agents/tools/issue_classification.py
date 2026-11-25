@@ -21,6 +21,38 @@ KINDS = {
     "validation": ("d4c5f9", "Verify acceptance criteria or an operational workflow"),
 }
 STATES = (*OPEN_STATES, "completed")
+TRANSITIONS = {
+    "proposed": {"ready", "in-progress", "experimenting", "validating", "paused",
+                 "blocked", "local-done", "completed"},
+    "ready": {"proposed", "in-progress", "experimenting", "validating", "paused",
+              "blocked", "local-done", "completed"},
+    "in-progress": {"experimenting", "validating", "paused", "blocked",
+                    "local-done", "completed"},
+    "experimenting": {"in-progress", "validating", "paused", "blocked",
+                      "local-done", "completed"},
+    "validating": {"in-progress", "experimenting", "paused", "blocked",
+                   "local-done", "completed"},
+    "paused": {"proposed", "ready", "in-progress", "experimenting", "validating",
+               "blocked", "local-done", "completed"},
+    "blocked": {"proposed", "ready", "in-progress", "experimenting", "validating",
+                "paused", "local-done", "completed"},
+    "local-done": {"validating", "paused", "completed", "in-progress"},
+    "completed": set(),
+}
+
+
+def validate_transition(issue, next_status):
+    current = classification(issue)["status"]
+    if issue["state"] == "closed":
+        if next_status == "completed" and current == "completed":
+            return
+        raise ValueError("Closed issue is read-only except a checklist correction")
+    if next_status not in STATES:
+        raise ValueError(f"Unknown task status: {next_status}")
+    if next_status == current:
+        return
+    if next_status != "completed" and next_status not in TRANSITIONS.get(current, set()):
+        raise ValueError(f"Cannot move issue status from {current} to {next_status}")
 DIMENSIONS = {"status": OPEN_STATES, "priority": PRIORITIES, "kind": KINDS}
 DEFINITIONS = [
     {"name": f"{axis}:{value.lower()}", "color": color, "description": description}

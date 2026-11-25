@@ -159,11 +159,19 @@ def github_command(args, settings):
     if operation == "progress":
         if args.status != "paused":
             require_running()
+        if args.status not in ("paused", "blocked") and (
+                not OWNER.exists()):
+            raise ValueError("Developer ownership required")
         return tracker.progress(args.number, args.status, args.approved, args.published, args.check_task)
     if operation == "checklist":
+        if not OWNER.exists():
+            raise ValueError("Developer ownership required")
         return tracker.checklist(args.number, args.check_task, args.approved, args.result_comment)
     with lock(LOCK):
         saved = read(REMOTE_CHECKPOINT) if REMOTE_CHECKPOINT.exists() else {}
+        repository = settings["tracker"]["github"].get("repository", "")
+        if saved and saved.get("repository") and saved["repository"] != repository:
+            raise ValueError("GitHub repository changed; inspect and migrate the remote checkpoint")
         if not OWNER.exists() or read(OWNER)["id"] != args.owner:
             raise ValueError("Developer ownership required")
         if control()["mode"] != "running" and args.phase not in ("paused", "blocked"):
@@ -181,6 +189,7 @@ def github_command(args, settings):
                     RUNTIME / "jobs" / job / "manifest.json").is_file():
                 raise ValueError(f"Unknown job: {job}")
         result = {"issue": args.number, "phase": args.phase, "next": args.next, "jobs": args.job,
+                  "repository": settings["tracker"]["github"].get("repository", ""),
                   "processed": processed, "control": control(), **recovery_context()}
         write(REMOTE_CHECKPOINT, result)
         return result
