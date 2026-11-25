@@ -112,7 +112,7 @@ def stop(process):
     def send(sig):
         try:
             os.killpg(process.pid, sig)
-        except (ProcessLookupError, PermissionError):
+        except ProcessLookupError:
             pass
 
     # Keep the leader unreaped until the group signal is sent so its process
