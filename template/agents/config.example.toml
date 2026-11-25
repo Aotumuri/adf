@@ -1,0 +1,22 @@
+[git]
+commit = "allow"
+push = "deny"
+pull_request = "deny"
+
+[tracker]
+backend = "local"
+
+[tracker.github]
+repository = ""
+create_issue = "ask"
+create_label = "ask"
+delete_label = "deny"
+update_issue = "ask"
+comment = "ask"
+close_issue = "ask"
+close_on = "published"
+
+[execution]
+codex_cli_path = ""
+auto_resume = false
+max_active_workers = 1

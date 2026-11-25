@@ -1,0 +1,5 @@
+_min_copier_version: "9.7.0"
+_subdirectory: template
+_exclude:
+  - "**/__pycache__"
+  - "**/*.pyc"
