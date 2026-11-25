@@ -113,7 +113,12 @@ def stop(process):
         try:
             os.killpg(process.pid, sig)
         except ProcessLookupError:
-            pass
+            return
+        except PermissionError:
+            # macOS reports EPERM once only the unreaped leader remains. A live
+            # descendant that ignores SIGTERM keeps the group signal working.
+            if process.poll() is None:
+                raise
 
     # Keep the leader unreaped until the group signal is sent so its process
     # group ID cannot be recycled. Children that ignore SIGTERM need the
